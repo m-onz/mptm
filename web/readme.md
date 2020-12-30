@@ -1,6 +1,6 @@
 # web
 
-## Stage 1: recon
+## Recon
 
 ### Map the application content
 
