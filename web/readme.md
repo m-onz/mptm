@@ -76,4 +76,118 @@
 
 ### Test for fail-open conditions
 
- 
+### Test for any multistage mechanisms
+
+### Exploit any vulnerability to gain unauthorized access
+
+## Test Session management
+
+### Understand the mechanism
+
+### Test tokens for meaning
+
+### Test tokens for predictability
+
+### Check for insecure transmission of tokens
+
+### Check for disclosure of tokens in logs
+
+### Check mapping of tokens to sessions
+
+### Test session termination
+
+### test for session fixation
+
+### Check for CSRF
+
+### Check cookie scope
+
+## Test access controls
+
+### understand the access control requirements
+
+### test with multiple accounts
+
+### test with limited access
+
+### test for insecure access control methods
+
+## Input based vulnerabilities
+
+### Fuzz all request parameters
+
+### test for SQL injection
+
+### test for XSS
+
+### test for HTTP header injection
+
+### Test for open redirection
+
+### test for stored attacks
+
+### test for OS command injection
+
+### test for path traversal
+
+### test for script injection
+
+### test for file inclusion
+
+## Test for specific input vulnerabilities
+
+### Test for SMTP injection
+
+## test for native software vulnerabilities
+
+### Test for buffer overflows
+
+### Test for integer vulnerabilities
+
+### Test for format string vulnerabilities
+
+### Test for SOAP injection
+
+### Test for LDAP injection
+
+### Test for XPath injection 
+
+### Test for back end request injection
+
+### Test for XXE injection
+
+## Test for logic flaws
+
+### Identify the attack surface
+
+### Test multistage process
+
+### Test handling of incomplete input
+
+## Test for application server vulnerabilities
+
+### Test for default credentials
+
+### Test for default content
+
+### test for dangerous HTTP Methods
+
+### Tets for proxy functionality
+
+### Test for virtual host misconfiguration
+
+### Test for web server bugs
+
+### Test for web application firewalling
+
+## Midcellaneous checks
+
+### DOM based attacks
+
+### Local privacy vulnerabilities
+
+### Check for weak SSL ciphers
+
+### Check same-origin policy configuration
+
+### Follow up on any information leakage
