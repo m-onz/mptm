@@ -11,7 +11,7 @@ sdptool browser <MAC_ADDRESS>
 l2ping <mac_address>
 ```
 
-# bluesnarfing
+## bluesnarfing
 
 ```
 mkdir -p /dev/bluetooth/rfcomm
