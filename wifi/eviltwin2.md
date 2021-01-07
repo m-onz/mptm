@@ -1,0 +1,94 @@
+Evil Twin EAP-TLS
+
+At some point I needed to use the proposed solution by the post bellow but the steps in https://github.com/OpenSecurityResearch/hostapd-wpe wasn't working in modern kali (2019v3) anymore.
+Anyway, it's easy to make them work. 
+You only need to download the hostapd-2.6 from here: https://w1.fi/releases/ and before compiling again hostapd-wpe install: apt-get install libssl1.0-dev
+Evil Twin for EAP-TLS
+
+This post was copied from https://versprite.com/blog/application-security/eap-tls-wireless-infrastructure/​
+The Uncommon Case: Attacking EAP-TLS
+
+Earlier I mentioned a less common wireless network configuration that we had to deal with during this project. This scheme is based on EAP-TLS, where the supplicant will have to present a valid client certificate to the authentication server before being granted access to the network.
+
+In this scenario, the secure TLS channel will only be created if the mutual authentication process goes well. In other words, if the supplicant first accepts the certificate of the authentication server and then the authentication server accepts the certificate of the supplicant.
+
+During the assessment, we were surprised by an error message obtained when using hostapd-wpe in our attacking machine:
+hostapd-wpe error
+
+As you can see in the error message, our tool is triggering an error message indicating it did not accept the certificate of the Wireless client because it is signed by an unknown CA. Hilarious, right? Our attacking tool is denying access to the victim because the user is not providing valid credentials. 
+
+So, judging by the output of the tool, we can see that the negotiation reached the point where the client certificate was indeed presented to the fake Radius server, which means that the fake certificate forged by the attacker was accepted by the victim.
+
+This means that the supplicant configuration was too lax, and it was accepting any certificate from the radius server.
+
+After seeing this error and searching the Web, we realized it was not that common to exploit this scenario -judging by the lack of information on blogs related to this matter – and that we had to deal with it somehow.
+​MiTM Attack – Defining the Objective​
+
+As you might have guessed already, the idea here is to tweak our tool to make it accept any certificate provided by occasional supplicants to let the victim establish a full connection with our malicious Wireless infrastructure and then perform a man-in-the-middle attack between the victim and the Internet, showing a captive portal to capture plaintext credentials as a first step.
+
+Note: Of course, when the MiTM attack is fully functional, you can redirect all of the victim’s traffic to your host to capture NetNTLM hashes, for example. We also walkthrough a similar attack in the following post: MiTM Attack Between Target Windows Machines and a DNS Server.
+
+In both scenarios, we first need to understand where the certificate control is being performed by hostapd-wpe and then modify it accordingly to prevent it from rejecting the invalid or unknown client certificates.
+
+After a quick analysis of the source code, we found the following:
+
+Original Source Code File: hostapd-2.6/src/eap_server/eap_server_tls.c
+eap_server_tls_ssl_init
+
+As you can see in the code above (line 80), the EAP TLS server implementation on hostapd invokes a custom function named eap_server_tls_ssl_init to initialize the server, and the third parameter is set to 1.
+
+Original Source Code File: hostapd-2.6/src/eap_server/eap_server_tls_common.c
+tls_connection_set_verify-1
+tls_connection_set_verify-2
+
+In the code above (lines from 78 to 80), we can observe the invocation of the function tls_connection_set_verify with the parameter verify_peer set to 1 (this was received from the eap_tls_init function).
+
+Original Source Code File: hostapd-2.6/src/crypto/tls_openssl.c
+verify_peer
+
+On the code above (from line 2307 to 2309), we can observe that the parameter verify_peer (originally set to 1) will be eventually used as a parameter of the OpenSSL function SSL_set_verify to make it validate the client certificate or not when the library is working as a server. By modifying the original line to 0, we can change the behavior of the tool and make it ignore whether the client certificate is valid or not.
+
+Modified Source Code File: hostapd-2.6/src/eap_server/eap_server_tls.c
+eap_tls_init
+
+After patching the source code of hostapd-wpe and recompiling, we tried the attack again and got the following output:
+patching hostapd-wpe
+
+By observing the output of our modified version of hostapd-wpe, we can see that the error message is not there anymore, and the client appears to be connected to our fake AP. Now, we should build the adequate infrastructure to present a captive portal to the victim and attempt a phishing attack.
+
+To quickly leverage it, we decided to take the portion of the code from Wifiphisher and adapt it for our particular needs, creating a rudimentary captive portal in Python. A link to the code for this Proof-of-Concept can be found on the references.
+
+Now that we have all the elements, let’s perform the attack against a victim and see how all this would be from an attacker perspective:
+1. Let’s check the environment with airodump-ng
+airodump-ng
+
+From the output, we can identify the access point BSSID (F4:EC:38:FA:E7:57) to which our victim (00:0F:60:07:95:D7) is connected to the WPA2-enterprise network named “enterprise” (ESSID).
+2. Run the modified hostapd-wpe tool to create a fake AP for the target network
+modified modified hostapd-wpe
+3. Customize the captive portal template (e.g. HTML login) to make it familiar for your target audience (victims) and run it
+Customize the captive portal
+4. Perform a de-auth attack and assume the risk (if you are impatient)
+de-auth attack
+
+As a result, we will see on the modified hostapd-wpe tool’s output the following messages:
+victim connected
+
+This suggests a victim (00:0f:60:07:95:d7) has connected to our fake AP.
+
+On the victim’s Windows host, we observe it automatically connected to the fake AP, and as soon as web navigation is tried, the user is presented  the captive portal:
+captive portal credentials
+
+After the victim has entered her credentials, we can see the output on the captive portal’s console:
+captive portal console
+
+The following screenshot shows the message shown to the victim when performing the attack to an iPhone device connected to a WPA2 network, requesting the victim to accept the certificate:
+accept certificate
+
+The following screenshot shows the captive portal presented to the iPhone device:
+iphone credentials
+
+Note: The Captive Portal HTML template drafted for this demo is just a Proof-of-Concept sample, and I encourage you to develop your own, including HTML tags searching for files on the network that allows you to capture NetNTLM hashes (if the victim is using Internet Explorer), as long as others more sophisticated that requires the user to download a binary on the computer to scan for issues before allowing access to the network.
+
+Although we can read different online articles stating that EAP-TLS is the most secure implementation for Wireless infrastructures, it is not used by most companies due to its scalability problems: the complexity of creating, delivering, configuring, and revoking a unique certificate per user.
+
+The whole security of this scheme relies, again, on the weakest link in the chain, which might be a device or host configured to accept any certificate presented by the authentication server or a mobile device used by an unconscious user that accepts it without considering the risk of this action.

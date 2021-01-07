@@ -9,3 +9,6 @@ m-onz pen testing methodology
 ## bluetooth
 
 ## network
+
+
+https://book.hacktricks.xyz/
